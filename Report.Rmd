@@ -1,0 +1,333 @@
+---
+title: "Data Visualization and Analysis of `Airbnb` Data"
+author: "Pingyuan Wang:pw2435@columbia.edu; Zhenyu Wang:zw2376@columbia.edu"
+output: html_notebook
+---
+
+
+##Introduction
+
+### Intuition
+* New York City has a lot of travelers every day. There are huge demands of housing rentals. As students living in New York City, we notice that the most students’ hometowns are not New York city. Renting an apartment is a really important thing for us. Also, for the Welcome Day or Commencement period, a lot of students’ families will come, and they need to reserve a temperaty living place. Due to relatively high price for hotels, we want to analyze the price for renting an apartment on `Airbnb` to help them find hosts based on their needs!
+
+### Data Source 
+* We decide to use the data from `Airbnb` becasue `Airbnb` is the hottest website now that people use to book an apartment.
+* The data size is about 800 Mb and released on 2nd March 2017 that has seven seperate files, detailed listings data, detailed calendar data, detailed review data, summary information for listings data, summary review data, neighbourhood lis for geo filter, GeoJSON file of neighbourhoods of the city. 
+* In this proposal, we analyzed summary information and metrics for listings in New York City
+that has columns: `id, name, host_id, host_name,neighbourhood_group, neighbourhood, latitude, longitude, room_type, price, min_night, number_of_reviews, last_reviews time, review_per_month,host_listing_counts, availability`.
+* However, `Airbnb` doesn't differentiate between a booked night versus an unavailable night, therefore these bookings have been counted as 'unavailable'. Thus, we decide to use reviews as an alternative way to illustrate the popularity of a specific listing.
+* The data could be found at following address: http://insideAirbnb.com/get-the-data.html 
+
+  On this webpage, find and download all files under`New York City, New York, United States` 
+
+### Overall Research Question
+
+This project aims to compare the relationship between price, neighbourhood, rating score, host information and room property in order to help customers to find an appropriate airbnb apartment by using iteractive plots on Shiny. 
+
+### Specific Research Quetions
+    
+For different neighbourhood, room propertities, how price differs.
+
+For different neighbourhoods, price, host information, how average rating score varies. 
+
+##Team
+
+* Team Members:
+    * Pingyuan Wang
+    * Zhenyu Wang
+* Data Collection: Pingyuan Wang
+* Data Cleaning: Zhenyu Wang
+* Data Visualization and analysis: Pingyuan Wang, Zhenyu Wang
+* Final Report: Pingyuan Wang, Zhenyu Wang
+
+```{r}
+MyData <- read.csv(file="Mydata.csv", header=TRUE, sep=",")
+
+```
+##Analysis of Data Quality
+
+We have several `Airbnb` data files for New York city. We select 24 very interesting and important variables from these data files and reasonally. We choice the variables those most values of them are not missing, the values of them are meaningful, and the distribution of their values is valuable. After some testing, we combine the variables by id, and omit the missing values.
+
+The analysis of some important variable is below.
+```{r, message=FALSE, warning=FALSE}
+library("ggplot2")
+library(plotly)
+```
+####Price of one room per night
+
+Price is a important variable for almost all people, since most of us could have some budget for the traveling. Firstly, I draw the density for all exited price. I want to know the price range and the distribution of price.
+```{r, message=FALSE, warning=FALSE}
+ggplot(MyData,aes(price))+
+  geom_density(color="lightslateblue")+
+  ggtitle("Density Plot of Price")
+
+```
+
+
+According to the Density graph, we could know that most price ranges from 0 to 500. We want to know that if the price larger than 500 is important to us. So we separate the price by 500, and draw the histogram for the separate ranges.
+    
+
+```{r, message=FALSE, warning=FALSE}
+data_low_price=MyData[MyData$price<=500,]
+data_high_price=MyData[MyData$price>500,]
+
+ggplot(data=data_low_price,aes(price))+
+  geom_histogram(binwidth = 10,fill="lightslateblue",color="grey")+
+  ggtitle("Histogram of Price below 501")
+ggplot(data=data_high_price,aes(price))+
+  geom_histogram(binwidth = 20,fill="lightslateblue")+
+  ggtitle("Histogram of Price above 500")
+
+```
+
+
+From the separated histograms, we find that most prices range between 50 and 100 dollars per day. For the price higher than 100, the higher the price is, the smaller frequency is. The interesting thing is that the frequency of price 10000 larger than the frequency of price that between 2500 and 10000. Also, the amount of price larger than 500 is not small, so we want to keep these data. Therefore, we analysis the price with separate low or high price ranges by 500.
+
+
+####Room Accommodates
+
+The other important variable is the room accommodates. Users may consider to travel with family members or travel with friends, so they need to know the room accommodates. We draw the histogram for the Room Accomodates.
+```{r, message=FALSE, warning=FALSE}
+plot1<-ggplot(MyData,aes(x=accommodates))+
+  geom_histogram(binwidth = 20,stat="count",fill="lightslateblue") + theme(axis.text.x = element_text(angle = 45, hjust = 1,size=7))+
+  ggtitle("Histogram of Room Accommodates")
+ggplotly(plot1)
+```
+
+From this graph we could know that most accommodate are 2, which are not surprised us. If you zoom in the accommodates of range 10 to 15, there are still 62 rooms with 15 accommodates, so we decide to keep those large values of accommodates.
+
+####Room Type
+
+After considering the price and accommodates, users may want to know the type of room. Some people may want to have their own places, and for personal safety they want a private room during the trips; some people want a entire apartment to travel with family members; or others want a shared room to make new friends with unknown people during the trip. We draw the bar chart for the room type.
+
+```{r, message=FALSE, warning=FALSE}
+plot2<-ggplot(MyData,aes(x=room_type,fill=room_type))+
+  geom_bar(stat="count")+
+  ggtitle("Bar Chart of Room Type")
+ggplotly(plot2)
+```
+
+From the bar chart of room types, we could know that most rooms are entire home, apartment or private room, which are reasonable. The amount of Shared room is not small, so this variable is really valuable.
+
+####Minimun Nights
+One of the main differences between `Airbnb` and other hotels is the requirement of minimum nights. All the hotels do not require the minimum nights, but the `Airbnb` have the restriction. We draw the histogram of minimum nights to see if it is effective.
+
+
+```{r, message=FALSE, warning=FALSE}
+
+plot3<-ggplot(MyData,aes(x=minimum_nights))+
+  geom_histogram(binwidth = 20,stat="count")+
+  ggtitle("Histogram of the Number of Minimum Nights")
+ggplotly(plot3)
+```
+From the histogram of all existed data of minimum nights, we know that most minimun nights are between 0 and 50, so we draw the separate graphs to investigate more information from the data seperated by 50.
+
+```{r, message=FALSE, warning=FALSE}
+
+par(mfrow=c(1,2))
+data_low_minnight=MyData[MyData$minimum_nights<=50,]
+data_high_minnight=MyData[MyData$minimum_nights>50,]
+
+ggplot(data=data_low_minnight,aes(minimum_nights))+
+  geom_histogram(binwidth = 1,fill="lightslateblue",color="grey")+
+  ggtitle("Histogram of the Number of Minimum Nights below 51")
+ggplot(data=data_high_minnight,aes(minimum_nights))+
+  geom_histogram(binwidth = 1,color="lightslateblue")+
+  ggtitle("Histogram of the Number of Minimum Nights above 50")
+```
+
+From the histogram of minimum nights below 50, we find that most minimum nights are below 5 nights, which values are reasonable, since after every guest coming they need to clean the room with cleaning fee. Also, the main trend for the minimum nights is that the larger requirement of minimum nights is, the smaller frequency is. The frequency of 30 nights is relative high for the range of 6 to 50 nights, which means the host requires guest to rent the room more than one month. From the histogram of minimum nights above 50, there are only a few number of room with the minimum night requirement larger than 50. We still keep these values, since some users may want to find a place to stay in a long time.
+
+####Review Ratings
+
+Users select all their needs, then they will have several similar room to make decision. We provide the reivew ratings for them, then they could make the right decision with lower risk. We draw the histogram of review ratings to test it's value.
+```{r, message=FALSE, warning=FALSE}
+
+plot3<-ggplot(MyData,aes(x=review_scores_rating))+
+  geom_histogram(binwidth = 20,stat="count",fill="lightslateblue")+
+  ggtitle("Histogram of Review Ratings")
+ggplotly(plot3)
+```
+
+
+
+From this histogram, we could know that this ratings are not all 100. The range of values is from 20 to 100, so it is a valuable and effective variable.
+
+
+##Executive Summary
+
+###Cancellation Policy VS Host Response Time
+![](plot1.jpg)
+
+####Basic Information about the graph and intuition behind analyzing it
+
+This heat map is for cancellation policy versus host response time filled by mean rating score. On the horizontal axis, the cancellation policy becomes stricter; on the vertical axis, the host response time becomes longer. On each cell on the heat map, there is a number showing how many observations in that category. 
+
+From a perspective of customers; they want to choose an apartment with higher rating scores because it indicates better quality. On the other hand, from a perspective of hosts, they want the rating scores be higher to attract more customers. This graph could give a view to hosts about their behaviors’ (response time, cancellation policy) relationship with rating scores. Thus, we want to use this graph to help hosts to improve their apartment’s rating score. 
+
+####Analyze cancellation policy
+
+In our initial idea, we thought as the cancellation policy becomes stricter, the rating might be monotonic lower because customers may not be very happy if they want to cancel the booking; or the rating might be monotonic higher because ideally the stricter the cancellation policy is, the more regularized the room is; thus, the quality might be better so higher rating scores. However, the results are not what we expected. The rating score do not have a monotonic property.
+
+Compare for different types of response time, how rating score differs when cancellation policy are different
+* 1.Among all five types of response time, the super_strict_30 cancellation policy has very few observations, thus this column do not have enough information to make suggestions or to find insights. We would not analyze this column. 
+
+* 2.For the missing values row, even though it could not provide hosts a view that what kind of behaviors would have higher rating score, analyzing it is still valuable since we could assume the distribution of N/A row is kind of similar as whole dataset. We could see that moderate and strict cancelation policies have higher rating score than flexible cancellation, it is also reasonable. Think about if there are rooms with flexible cancellation policies, then the room’s quality may not be very great because hosts want to use flexible cancellation policies to attract people book their rooms.
+
+* 3.For shorter response time, within an hour, within a few hours and within a day, the moderate has the highest rating score, the strict has the lowest rating score. This totally makes sense because if a room is just booked in a very short time period, then moderate cancellation policy would make customers happy, but strict would not. Also intuitively, moderate cancellation policy may also indicates that hosts care about customers, then the rating scores might be higher.
+
+* 4.For longer response time, the flexible cancellation has the lowest rating. This might because customers may think hosts do not care their traveling experience, so hosts reply very late, providing flexible cancellation may also indicate that the room’s quality is not very good. But here, the strict cancellation policy has highest rating scores, which is very different as other response time’s. It might because the host might be very busy but the room condition is great so when customers live in that apartment, they feel great and give higher rating scores. 
+
+####Analyze Response Time policy
+
+Ideally, we think with quicker response time, the rating should be higher. The result is not surprising among all columns except the last column, since the last column only have very few observations and thus the result is not reliable. However, we could see that for shorter response time, within an hour, within a few hours and within a day, the rating score is very similar. It indicates that as long as the reply is within a day, it doesn’t matter that much how fast a host replies to customer.
+
+####Recommendations for Hosts
+
+Based on previous analysis, we have the following recommendations for hosts to improve their rating scores. 
+1. Reply customers with in a day
+2. Make cancellation policy to be moderate if possible, this would be make customers happier and this would not hurt host’s business too much.
+
+###Comparison of Average Price VS Average Price per Person
+![](plot2.jpg)
+
+####Basic Information about the graph and intuition behind analyzing it
+
+This is a combination of two bar plots. On the left graph, the horizontal axis is the mean price represented by the length of the bar; on the right graph, the horizontal axis is the mean price divided by accommodates, so it’s the mean price per person. Three different room types are colored with three different colors, and on the vertical axis, five neighborhood groups are listed.  
+
+This plot allows us to compare for different neighborhood groups, how price differs for different room types. Here we are not interested in the absolute price, we are interested in the relatively price among each group. 
+
+Initially, we plot mean price for three different room types, we found that shared room and private room’s mean price are very close to each other, which is very surprised because we think private room should have relatively higher price than shared room. Thus, we decide to look at for different neighborhood groups, how those prices for each type of room differ. We also notice that for different types of room, they have different number of accommodates, so we also plot the mean price per person to compare the relatively mean price. We hope we could provide customers a view to choose a room type based on number of people and location(neighborhood).
+
+####Analysis
+
+From the left plot, we could see that among all different regions, the entire home’s price is highest; it is more than two times than private room. Shared room and private room’s prices are very similar especially in Manhattan and Brooklyn. 
+
+From the right plot, we could see that in Bronx, the price per person among all of those room types are very similar. For Brooklyn, Manhattan and Queens, the price per person for entire room is slightly higher than private room, private room is slightly higher than shared room. But in Staten Island, the private room has the highest price per person, it is a little higher than entire room but doubled as shared room. 
+
+####Recommendation
+
+1.	If you are traveling alone, from perspective of saving money, you may want to choose shared room; but if you prefer some privacy you should definitely consider private room. 
+2.	If you are traveling with other people, I would suggest select entire room because the price per person do not have a huge difference even though the total amount for entire room is higher.  
+
+###Distribution of the Great Reputation Rooms with Average Price
+![](plot3.jpg)
+
+####Basic Information about the graph and intuition behind analyzing it
+
+This is the distribution of the great reputation rooms with average price. We select data with number of reviews greater than 20 because we want to guarantee the review scores are reliable. We then define great reputation rooms with 100 review score. We finally plot the bar plot for average price per person. The reason we do this is to provide customers a view that if he/she wants to find a great rating score house in different regions, how much money he/she should approximately pay. 
+
+####Analysis
+
+We can see shared room only has data in Brooklyn, which indicates if you want to choose a shared room with 100 rating score, the only place you could choose is Brooklyn, and the price is unexpected high, it is almost as high as Entire home/apt in Manhattan. 
+
+We can also see that Manhattan’s price per person for entire home is twice as private room, but other four regions, those two values are very similar. It might because the room property in Manhattan, based on my personal experience, the private room is very small in Manhattan and thus if the entire room’s rating is pretty high, then the apartment may very likely to be a luxury apartment. As a result, the price is very high.
+
+####Recommendation
+
+Since the Y axis is represented as price per person, the recommendation is only used for several people’s group travel. Select entire home in Bronx, Brooklyn, Queens and Staten Island, and select private room in Manhattan to save budget.
+
+## Main Analysis
+Please go to our recommendation system, and have fun to play with your choices.
+The following link is our recommendation system:
+https://betterthanbest.shinyapps.io/Project_final_eda/
+
+
+The goal of this project is to provide users a tool to choose a room from `Airbnb` in New York city based on different criterials, such as price, rating score, room type, etc.
+
+* Firstly, we create an interactive map to show the locations of each room. If we show all the rooms in one map, it would be full of dots in the map, and it could harm users to select a room. Therefore, we organize some selections for users.
+
+    * 1)Price: Since the range of price is so large, we allow user to select two types of price, low and high where low is price lower than 500 and high is price higher than 500 respectively. We give user the flexibility to choose a price range from the bar. 
+
+    * 2)Minimum Number of accommodates: Since users need to make sure minimum number of people could fit in the certain room, we create this selection. Users can enter the number of minimum accommodates, and our default number is 2.
+
+    * 3)Room Type: We create this selection for users to choose different room types, private room, shared room and entire home/aot.
+
+    * 4)Number of nights: Since `Airbnb` has the minimum nights requirement, we let users to enter the number of number of nights to make sure they meet the requirement.
+
+    * Furthermore, on the map, the size of a point is determined by the price, the higher the price, the smaller the point because we assume customers would be happy to click a listing with lower price if other criterial is similar. In addition, the color represents the rating score for a listing; the lighter the listing is, the higher score the listing has. 
+
+    * Also, we add a label on each point. User could click on the point, and see the detailed information. We add the cleaning fee for user to reconsider the price, and add the URL to help users to go to the `Airbnb` to book a room. We add the cleaning and location score to the label, in case users want to know these scores.
+    
+    * Analysis and Findings
+      * For price range from 0-100, the number of private room is the most and shared room is the least
+      * For price range from 0-100, Brooklyn has higher rating scores
+      * For price range from 100-200, the number of entire room increases and the number of private and share rooms decrease
+      * For price range from 100-200, for the entire home/apt room type, Queens has the highest rating scores
+      * For price above than 200, for shared room and private room, there are barely points on Bronx, Brooklyn, Queens, and Staten Island. But there are still many available listings in Manhattan. It also suggests that Manhattan's living expense is pretty high
+      * For price above than 200, most of listings are located at the downtown of Manhanttan, it is also reasonable that we know the Wall Street is there. There are also many listings in Brooklyn, especially near the Broadway and Meeker Ave. It's also reasonable since Brooklyn is very closed to the Wall Street. So it results in the higher price.
+      * For price higher than 500, almost all the listings are in Manhanttan. Several listings are in Brooklyn, and the rating score is very high. It's very reasonable that higher price deserves higher rating. But it is not true in Manhattan even though the price is above 500. It might because that higher price and lower quality of room result in a lower rating score.
+    * The following is a screenshot of the sample interactive map.
+
+![](InteractiveMap.jpeg)
+
+
+
+```{r}
+```
+
+* Secondly, we want to create a table for users to find a result after search.
+
+    * We set the room type selection for users to choose. Since the table could not show the room location, we add the neighbourhood_group and neighbourhood as selections. 
+
+    * As a result, they could see a list of listings with detailed information. They could also sort the data to whatever ranking they want to see by click on the arrow round the column name. Also, they could search certain information by entering information to the search area. The color of the heatmap represent the rating score. The lighter color represent the higher rating scores. This map could let the user make a more reasonable decision. For example, user want to select price lower than 100, but if they saw that the rating is really good at 105 dollar, then they may want to increase the price level to 105 for a better experience. Also, some users may find that other location would have better price and rating, then they change their minds for the location.
+
+    * The following is a screenshot of the sample table.
+
+![](table.jpeg)
+
+```{r}
+```
+
+* Finally, we allow users to use heatmap to look at different variables versus price filled by rating scores.
+    * The variables on horizontal axis could be, neighbourhood_group, room_type, minimum_night, host_response_time and cancellation_policy.
+    * The variable on vertical axis is the price that could be customized. Users could choose price range from top left part on Shiny.
+    * The filled scores could be review_scores_rating, review_scores_accuracy, review_scores_cleanliness, review_scores_checkin, review_scores_communication, review_scores_location, review_scores_value.
+
+* Analysis and Findings
+    * For lower price, Staten Island generally have higher rating scores. But the number of observations in Staten Island is relatively small.
+    * The entire home/apt is the most popular room type, from a roughly view, the rating score is higher for private room for the same price.
+    * For host response time, generally speaking, as the response time is shorter, the rating is slightly higher
+    * For cancellation poly, it seems that moderate cancellation policy would have higher rating scores among all price. 
+    * For cleanliness score, Staten Island has the best score and Manhattan has the worst score.
+    * For cleanliness score, the shared room has the highest score.
+    * For communication score, the flexible cancellation has the highest score which totally make sense because customers are happy with it.
+    * For communication score, the shortest response time has the highest communication score.
+
+![](Heatmap.jpeg)
+
+
+
+
+##Conclusion
+
+This dataset size is very large (800MB) and has more than 100 variables.
+
+###Missing value problem:
+
+This dataset exists a lot of missing values. When we try to omit each row that has missing value, all the data is empty. Therefore, we need to look at every variable carefully, and choose part of them to do the analysis. After variable selection, our data still have some missing values. For the variable which has “NA” values, we treat all empty values to “NA”; for the variable with a few missing values, we omit the missing data.
+
+###Imbalance data:
+
+For some condition, the data is imbalanced. For example, this data only have 6 observations for `cancellation policy` =`super_strict_30` from total 30,000 observations. Also, most observations’ price are less than 500, and a few observations’ price is larger than 500. We still keep those information, since some of them are make sense. In daily life, most of us would like to rent a room with price less than 500, and the demand of rooms with low price is larger than demand of rooms with high price.
+
+However, since the data is imbalanced in some variable, such as, `price`, `cancellation policy`, so we could not have great analysis with those parts with a few observations.
+
+###Decision points:
+
+Firstly, we draw some histograms to saw the variables’ qualities. After the quality testing, we draw some plots with multivariable to find the correlations between variables. According to the data, we decide to create a recommendation system for tenants. We choose the meaningful variables as selections for our interactive map. Also, create a table for users to search data, and create a Heatmap for users to have a general idea of data. Furthermore, we try the selections, play with interactive shiny plots, and update the functions and selections by responses.
+
+
+When we detect the data, we find some strange things, such that the price of shared room and private room are similar. We could not agree with it, so we start to find the reason. We think the strange result may be caused by the accommodation of each room, so we divide the price by accommodation. Then we find that the average price is more reasonable. It is a process that from disagree to agree, and it makes us think a lot. In the Executive Summary part, we provide some recommendation for renters to improve their business, and also provide some recommendation for tenants to make better choice.
+Our main purpose is that help tenants to rent a comfortable room and enjoy their relaxing time, and help renters to improve their business. Our goal is Win-win!
+
+###Future Directions:
+
+We want to extent our data for a long period to do the analysis, since this data only based on year 2017. Then we could do some price analysis by time.
+We want to create a feedback area on the interactive shiny plots, then we could improve our shiny plots by real users’ demands.
+
+###Project Link
+If you are interested in this project, you could find all the code on the github link:
+
+Follow the instruction on Readme file, you could reproduce this project!
+

@@ -1,0 +1,27 @@
+---
+title: "Collect data & Cleaning data"
+author: "Pingyuan Wang:pw2435@columbia.edu; Zhenyu Wang:zw2376@columbia.edu"
+output: html_notebook
+---
+```{r}
+
+library(shiny)
+library(leaflet)
+library(leaflet)
+library(RColorBrewer)
+library(scales)
+library(lattice)
+library(dplyr)
+MyData <- read.csv(file="listings-2.csv", header=TRUE, sep=",")
+MyData <- na.omit(MyData)
+choiceRoom<-c(levels(MyData$room_type))
+MyData2 <- read.csv(file="listings.csv", header=TRUE, sep=",")
+ind<-c(1:2,5:12,14,16)
+MyData1<-MyData[,ind]
+ind2=c(1,2,26,65,54,80:86,91)
+a<-MyData2[,ind2]
+MyData<-merge(MyData1,a,by="id")
+MyData<-na.omit(MyData)
+MyData$host_response_time <- sub("^$", "N/A", MyData$host_response_time)
+write.csv(MyData, file = "/Users/Kelly/Desktop/2017SPRING-Courses/EDA/project/EDA_Project/Mydata.csv", row.names=FALSE)
+```

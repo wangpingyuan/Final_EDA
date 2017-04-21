@@ -1,0 +1,301 @@
+---
+title: "Data Visualization and Analysis of `Airbnb` Data"
+runtime: shiny
+output: html_notebook
+---
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+library(rsconnect)
+library(sp)
+library(shiny)
+library(leaflet)
+library(leaflet)
+library(RColorBrewer)
+library(scales)
+library(lattice)
+library(dplyr)
+library(ggplot2)
+library(viridis)
+MyData <- read.csv(file="Mydata.csv", header=TRUE, sep=",")
+choiceRoom<-c(levels(MyData$room_type))
+
+```
+
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+library(maps)
+mm = map('county', region = 'new york',xlim=c(-74.2,-73.7), ylim=c(40.58,40.87), plot=F)	# map of three states
+#points(MyData$longitude, MyData$latitude, col = "red", cex = .6)
+factpal = colorFactor(topo.colors(6), mm$names)
+map = leaflet(data = mm) %>% addTiles(
+        urlTemplate = "//{s}.tiles.mapbox.com/v3/jcheng.map-5ebohr46/{z}/{x}/{y}.png",
+        attribution = 'Maps by <a href=" ">Mapbox</a >'
+      ) %>% addPolygons(fillColor = ~factpal(names), stroke = F, label=mm$names)
+
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+library(plotly)
+shinyApp(
+  ui = navbarPage("Airbnb", id='nav',
+     tabPanel("Interactive Map",
+              div(class="outer",
+              tags$head(
+                includeCSS("styles.css")
+              ),
+              leafletOutput("MapPlot1",height="100%"),
+              absolutePanel(id = "controls", class = "panel panel-default", fixed = TRUE, draggable = TRUE, top = 60, left = "auto", right = 20, bottom = "auto", width = 332, height = "auto", h2("Rental Explorer"),
+             selectInput(inputId = "hl", 
+                label = "High/Low Price", 
+                choices = c('high','low')),
+             conditionalPanel(
+               condition = "input.hl=='low'",
+               sliderInput(inputId = "price", 
+                label = "Low Price Range", 
+                value = c(0,100), min = 0, max = 500, step = 10)
+             ),
+             conditionalPanel(
+               condition = "input.hl=='high'",
+                sliderInput(inputId = "price2", 
+                label = "High Price Range", 
+                value = c(500,600), min = 500, max = max(MyData$price), step = 100)
+             ),
+             numericInput(inputId = "num_people", 
+                label = "Minimum Number of Accommodates", 
+                value = 2, min = min(MyData$accommodates), max = max(MyData$accommodates)),
+             selectInput(inputId = "roomtype", 
+                label = "Room Type", 
+                choices = sort(unique(MyData$room_type))),
+             numericInput(inputId = "num",
+                        label= "Number of Nights",
+                        value = 2, min = 0, max = max(MyData$minimum_nights)
+                          )
+                
+              ))),
+     tabPanel("Data Explorer",
+      fluidRow(
+      column(3,
+        selectInput("type", "Room Types", c("All Types"="", choiceRoom), multiple=TRUE)
+      ),
+      column(3,
+        conditionalPanel("input.type",
+          selectInput("group", "Neighborhood Groups:", c("All Groups"=""), multiple=TRUE)
+        )
+      ),
+      
+      column(3,
+        conditionalPanel("input.type",
+          selectInput("nei", "Neighborhood:", c("All Neighborhood"=""), multiple=TRUE)
+        )
+      )
+      
+    ),
+    hr(),
+    DT::dataTableOutput("table")
+             
+             
+             ),
+    
+    tabPanel("Heatmap",
+      fluidPage(
+        column(3,
+      selectInput(inputId = "var1", 
+                label = "Choose a variable:", 
+                choices = c("neighbourhood_group","room_type","minimum_nights","host_response_time","cancellation_policy"))),
+      column(3,
+      selectInput(inputId = "var2", 
+                label = "Choose a rating:", 
+                choices = colnames(MyData)[17:23])),
+      
+      
+      column(3,
+             numericInput(inputId = "min_price",
+                        label= "Min Price",
+                        value = 0, min = 0, max = max(MyData$price)
+                          )
+      ),
+      
+      column(3,
+             numericInput(inputId = "max_price",
+                        label= "Max Price",
+                        value = 50, min = 0, max = max(MyData$price)
+                          )
+      )
+      
+    ),
+    plotlyOutput("heat",height = "100%")
+              
+  )),
+  
+  server = function(input, output, session) {
+    
+    output$MapPlot1 <- renderLeaflet({
+         leaflet() %>%
+      addTiles(
+        urlTemplate = "//{s}.tiles.mapbox.com/v3/jcheng.map-5ebohr46/{z}/{x}/{y}.png",
+        attribution = 'Maps by <a href=" ">Mapbox</a >'
+      ) %>%
+      setView(lng = -74, lat = 40.8, zoom = 11)
+    })
+    
+    observe({
+      hl = input$hl
+      x <- input$price
+      xx <- input$roomtype
+      y<-input$price2
+      num = input$num
+      num_people=input$num_people
+      pal <- colorNumeric("viridis", MyData$review_scores_rating^2)
+      pal1 <- colorNumeric("viridis", MyData$review_scores_rating)
+      if(hl =='low'){
+      sites <- MyData %>% 
+        filter(findInterval(MyData$price, x) == 1 & MyData$room_type %in% xx &
+                 MyData$minimum_nights<=num & MyData$accommodates >=num_people)
+
+      #print(dim(sites))
+      pop_city = paste0( 
+                    "<strong>Name: </strong>",
+                     sites$name,
+                   "<br><strong>Price: </strong>",
+                     sites$price,
+                   "<br><strong>Cleaning Fee: </strong>",
+                     sites$cleaning_fee,
+                     "<br><strong>Room Type: </strong>",
+                     sites$room_type,
+                     "<br><strong>Total Rating: </strong>",
+                     sites$review_scores_rating,
+                     "<br><strong>Neighbourhood Group: </strong>",
+                     sites$neighbourhood_group,
+                     "<br><strong>Cleanliness Score: </strong>",
+                     sites$review_scores_cleanliness,
+                   "<br><strong>Location Score: </strong>",
+                     sites$review_scores_location,
+                   "<br><strong>the Number of Minimum Nights Requirment: </strong>",
+                     sites$minimum_nights,
+                   "<br><strong>Accommodates: </strong>",
+                     sites$accommodates,
+                   "<br><strong>URL: </strong>",
+                  paste("<a href=",sites$listing_url,">Rental Information</a>")
+                  
+                     
+                     )
+      leafletProxy("MapPlot1", data=sites) %>% clearShapes()%>%
+        addCircles(lng=~longitude, lat=~latitude, radius=~sqrt(1/price)*1000, stroke=F,fillColor=~pal(review_scores_rating^2),popup=pop_city)%>%addCircles(lng=~longitude, lat=~latitude, radius=0.1,color=~pal(review_scores_rating^2))%>%
+        addLegend("bottomleft", pal=pal1, values=MyData$review_scores_rating, title="Rating",layerId = 'a')
+      }
+      else{
+        sites <- MyData %>% 
+        filter(findInterval(MyData$price, y) == 1 & MyData$room_type %in% xx &
+                 MyData$minimum_nights<=num& MyData$accommodates >=num_people)
+        pop_city = paste0( 
+                    "<strong>Name: </strong>",
+                     sites$name,
+                   "<br><strong>Price: </strong>",
+                     sites$price,
+                   "<br><strong>Cleaning Fee: </strong>",
+                     sites$cleaning_fee,
+                     "<br><strong>Room Type: </strong>",
+                     sites$room_type,
+                     "<br><strong>Total Rating: </strong>",
+                     sites$review_scores_rating,
+                     "<br><strong>Neighbourhood Group: </strong>",
+                     sites$neighbourhood_group,
+                     "<br><strong>Cleanliness Score: </strong>",
+                     sites$review_scores_cleanliness,
+                   "<br><strong>Location Score: </strong>",
+                     sites$review_scores_location,
+                   "<br><strong>the Number of Minimum Nights Requirment: </strong>",
+                     sites$minimum_nights,
+                   "<br><strong>Accommodates: </strong>",
+                     sites$accommodates,
+                   "<br><strong>URL: </strong>",
+                     paste("<a href=",sites$listing_url,">Rental Information</a>")
+                     )
+      leafletProxy("MapPlot1", data=sites) %>% clearShapes()%>%
+        addCircles(lng=~longitude, lat=~latitude, radius=~sqrt(1/price)*20000, stroke=F,fillColor=~pal(review_scores_rating^2),popup=pop_city)%>%addCircles(lng=~longitude, lat=~latitude, radius=0.1,color=~pal(review_scores_rating^2))%>%
+        addLegend("bottomleft", pal=pal1, values=MyData$review_scores_rating, title="Rating",layerId = 'a')
+      #print(dim(sites))
+      }
+      
+    })
+    
+    
+    
+    observe({
+    group <- if (is.null(input$type)) character(0) else {
+      filter(MyData, room_type %in% input$type) %>%
+        `$`("neighbourhood_group") %>%
+        unique() %>%
+        sort()
+    }
+    stillSelected <- isolate(input$group[input$group %in% group])
+    updateSelectInput(session, "group", choices = group,
+      selected = stillSelected)
+  })
+    
+    observe({
+    nei <- if (is.null(input$type)) character(0) else {
+      MyData %>%
+        filter(room_type %in% input$type,
+          is.null(input$type) | neighbourhood_group %in% input$group) %>%
+        `$`("neighbourhood") %>%
+        unique() %>%
+        sort()
+    }
+    stillSelected <- isolate(input$nei[input$nei %in% nei])
+    updateSelectInput(session, "nei", choices = nei,
+      selected = stillSelected)
+  })
+    
+    
+    
+    
+    
+      output$table <- DT::renderDataTable({
+    df <- MyData %>%
+      filter(
+        #Score >= input$minScore,
+        #Score <= input$maxScore,
+        is.null(input$type) | room_type %in% input$type,
+        is.null(input$group) | neighbourhood_group %in% input$group,
+        is.null(input$nei) | neighbourhood %in% input$nei
+      ) #%>%
+      #mutate(Action = paste('<a class="go-map" href="" data-lat="', lat, '" data-long="', long, '" data-zip="', `Urban Area Name`, '"><i class="fa fa-crosshairs"></i></a >', sep=""))
+    action <- DT::dataTableAjax(session, df)
+
+    DT::datatable(df, options = list(ajax = list(url = action)), escape = FALSE)
+  })
+      
+      output$heat = renderPlotly({
+        
+        varr1 = input$var1
+        varr2 = input$var2
+        temp1 = select(MyData, price)
+        temp2=data.frame(MyData[varr1],MyData[varr2])
+        temp=data.frame(temp1,temp2)
+        colnames(temp)=c("price","variable1","variable2")
+        print(varr1)
+        min_prices = input$min_price
+        max_prices = input$max_price
+
+        new_data<-temp[temp$price<=max_prices & temp$price>=min_prices,]
+        a<-group_by(new_data,price,variable1)
+        b <- summarise(a,mean=mean(variable2,na.rm=T))
+ggplot(b,aes(x=variable1,y=price,fill=mean))+
+  geom_tile()+
+  scale_fill_viridis('Average Rating Scores')+
+  labs(title=paste("Price VS ",varr1,"filled by average ",varr2),x =varr1, y = "Price")
+
+        
+        
+      })
+      
+      
+  },
+  options = list(height = 800)
+)
+```
+```
+
